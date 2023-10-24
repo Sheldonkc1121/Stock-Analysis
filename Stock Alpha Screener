@@ -1,0 +1,161 @@
+### Libraries ###
+import pandas as pd
+import numpy as np
+import pandas_ta as ta
+from pygame import mixer
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import plotly.express as px
+import plotly.graph_objects as go
+
+import warnings
+warnings.simplefilter("ignore")
+
+
+
+
+
+### Variables ###
+PATH = "...sourcename.csv"
+DEST = "destination folder"
+key = "alpha key"
+interval = "60min" # 1min 5min 15min 30min 60min
+extd_hours = "true" # true false
+symb_list = []
+stocks_not_downloaded = []
+
+
+
+
+
+
+### Functions ###
+# Return ticker symbol list from CSV
+def get_symbol(file, col_name):
+    try:
+        df = pd.read_csv(file)
+    except FileNotFoundError:
+        print("File Doesn't Exist")
+    else:
+        return df[col_name]
+
+# Save stock data to csv
+def locate_ideal_stocks(ticker):
+    try:
+        url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={ticker}&interval=60min&extended_hours=true&outputsize=full&apikey=key&datatype=csv'
+        df = pd.read_csv(url)
+        df = pd.DataFrame(df)
+        if df.empty:
+            print("df empty : ", ticker)
+            pass
+
+        ichimoku = ta.ichimoku(high=df["high"], 
+                               low=df["low"], 
+                               close=df["close"], 
+                               include_chikou=True)
+        # df = df.rename(columns={"timestamp":"date"})
+        df["TenkanSen"] = ichimoku[0]["ITS_9"]
+        df["KijunSen"] = ichimoku[0]["IKS_26"]
+        df["ChikouSen"] = ichimoku[0]["ICS_26"]
+        df["SpanA"] = ichimoku[0]["ISA_9"]
+        df["SpanB"] = ichimoku[0]["ISB_26"]
+        Tk = df["TenkanSen"].iloc[-1]
+        Kj = df['KijunSen'].iloc[-1]
+        SpA = df["SpanA"].iloc[-1]
+
+        if Tk > SpA and Kj > SpA:
+            print("Match found: " + ticker)
+            
+
+    except Exception as ex:
+        print(ticker, " empty")
+        pass
+
+# Creating DF
+# def stock_df(ticker):
+#     url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={ticker}&interval={interval}&extended_hours={extd_hours}&outputsize=full&apikey={key}&datatype=csv'
+#     df = pd.read_csv(url)
+
+# # Create Kumo
+# def fill_color(label):
+#     if label >= 1:
+#         return 'rgba(0, 0, 125, 0.4)'
+#     else:
+#         return 'rgba(125, 0, 0, 0.4)'
+
+# # Plot Ichimoku
+# def Ichimoku(df):
+
+
+#     candle = go.Candlestick(x = df.index, open = df['open'], 
+#                             high = df['high'], low = df['low'],
+#                             close = df['close'], name = 'Candlestick')
+
+#     df1 = df.copy()
+#     fig = go.Figure()
+#     df['label'] = np.where(df['SpanA'] > df['SpanB'], 1, 0)
+#     df['group'] = df['label'].ne(df['label'].shift()).cumsum()
+#     df = df.groupby('group')
+
+#     dfs = []
+
+#     for name, data in df:
+#         dfs.append(data)
+
+#     for df in dfs:
+#         fig.add_traces(go.Scatter(x = df.index, y = df.SpanA,
+#                                 line = dict(color = 'rgba(0, 0, 0 ,0)')))
+
+#         fig.add_traces(go.Scatter(x = df.index, y = df.SpanB,
+#                                 line = dict(color = 'rgba(0, 0, 0 ,0)'), 
+#                                 fill = 'tonexty', fillcolor = fill_color(df['label'].iloc[0])))
+
+#     kijunsen = go.Scatter(x = df1.index, y = df1['KijunSen'],
+#                 line = dict (color = 'orange', width = 2), name = 'Kijun Sen')
+        
+#     tenkansen = go.Scatter(x = df1.index, y = df1['TenkanSen'],
+#                 line = dict (color = 'blue', width = 2), name = 'Tenkan Sen')
+        
+#     chikou = go.Scatter(x = df1.index, y = df1['ChikouSen'],
+#                 line = dict (color = 'purple', width = 2), name = 'Chikou Sen')
+        
+#     span_a = go.Scatter(x = df1.index, y = df1['SpanA'],
+#                 line = dict (color = 'blue', width = 2, dash = 'dot'), name = 'Senkou SpanA')
+        
+#     span_b = go.Scatter(x = df1.index, y = df1['SpanB'],
+#                 line = dict (color = 'orange', width = 2, dash = 'dot'), name = 'Senkou SpanB')
+        
+#     fig.add_trace(candle)
+#     fig.add_trace(kijunsen)
+#     fig.add_trace(tenkansen)
+#     fig.add_trace(chikou)
+#     fig.add_trace(span_a)
+#     fig.add_trace(span_b)
+
+#     fig.update_layout(title=  + "Ichimoku", height = 600, width = 600, showlegend = True)
+
+#     fig.show()
+
+# Control program function
+def program_control():
+    print("Stock Screener Application. Please wait while it finds eligible stocks.")
+    for x in range(0, len(symb_list)):
+        locate_ideal_stocks(symb_list[x])
+    mixer.init()
+    mixer.music.load("windchime1-7065.mp3")
+    mixer.music.play()
+    print("Finished!")
+
+
+
+### Function Variables ###
+
+# Get stock symbol list
+symb_list = get_symbol(PATH, "Symbol")
+
+
+
+
+### Program ###
+# Main
+program_control()
