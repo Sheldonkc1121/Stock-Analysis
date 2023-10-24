@@ -1,0 +1,814 @@
+### Libraries ###
+import pandas as pd
+import yfinance as yf
+from tqdm import tqdm
+import cufflinks as cf
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
+init_notebook_mode(connected=True)
+cf.go_offline()
+from pygame import mixer
+import warnings
+warnings.simplefilter("ignore")
+
+
+
+
+
+
+
+
+
+### Variables ###
+# PATH = "...sourcename.csv"
+
+mixer.init()
+mixer.music.load("windchime1-7065.mp3")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Functions ###
+# Return ticker symbol list from CSV
+def get_symb(file, col_name):
+    try:
+        df = pd.read_csv(file)
+        df = df.dropna()
+        df = df.reset_index()
+    except FileNotFoundError:
+        print("File Doesn't Exist")
+    else:
+        return df[col_name]
+
+# Bullish max range
+def short_game_screener(ticker, symbols):
+    try:
+        # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+        # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+        df = yf.Ticker(ticker).history(period= "3mo", interval= "1h")
+
+        hi_val = df['High'].rolling(window=9).max()
+        low_val = df['Low'].rolling(window=9).min()
+        hi_val2 = df['High'].rolling(window=26).max()
+        low_val2 = df['Low'].rolling(window=26).min()
+
+        df['TenkanSen'] = (hi_val + low_val) / 2
+        df['KijunSen'] = (hi_val2 + low_val2) / 2
+        df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+
+        Tk = df["TenkanSen"][-1]
+        Kj = df["KijunSen"][-1]
+        lag = df['High'].iloc[-27]
+        SpT = df["SpanT"][-1]
+        open1 = df["Open"].iloc[-1]
+        cls1 = df["Close"].iloc[-1]
+
+        if cls1 > open1 and cls1 > Tk and Tk > Kj and cls1 > lag and Tk > SpT:
+            try:
+                # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+                df = yf.Ticker(ticker).history(period= "1mo", interval= "30m")
+                hi_val = df['High'].rolling(window=9).max()
+                low_val = df['Low'].rolling(window=9).min()
+                hi_val2 = df['High'].rolling(window=26).max()
+                low_val2 = df['Low'].rolling(window=26).min()
+
+                df['TenkanSen'] = (hi_val + low_val) / 2
+                df['KijunSen'] = (hi_val2 + low_val2) / 2
+                df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+
+                Tk = df["TenkanSen"][-1]
+                Kj = df["KijunSen"][-1]
+                lag = df['High'].iloc[-27]
+                SpT = df["SpanT"][-1]
+                open1 = df["Open"].iloc[-1]
+                cls1 = df["Close"].iloc[-1]
+
+                if (Tk - Kj)/Tk >= 0:
+                    symbols.append(ticker)
+                    print(symbols)
+                    # try:
+                    #     # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                    #     # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+                    #     df = yf.Ticker(ticker).history(period= "ytd", interval= "1d")
+
+                    #     hi_val = df['High'].rolling(window=9).max()
+                    #     low_val = df['Low'].rolling(window=9).min()
+                    #     hi_val2 = df['High'].rolling(window=26).max()
+                    #     low_val2 = df['Low'].rolling(window=26).min()
+
+                    #     df['TenkanSen'] = (hi_val + low_val) / 2
+                    #     df['KijunSen'] = (hi_val2 + low_val2) / 2
+                    #     df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+
+                    #     Tk = df["TenkanSen"][-1]
+                    #     Kj = df["KijunSen"][-1]
+                    #     lag = df['High'].iloc[-27]
+                    #     SpT = df["SpanT"][-1]
+                    #     open1 = df["Open"].iloc[-1]
+                    #     cls1 = df["Close"].iloc[-1]
+
+                    #     if cls1 > open1 and cls1 > Tk and Tk > Kj and cls1 > lag and Tk > SpT:
+                            # symbols.append(ticker)
+
+                    # except Exception as ex:
+                    #     pass
+            except Exception as ex:
+                pass
+    except Exception as ex:
+        pass
+
+
+# Bullish week range with start of wave 3mo
+def long_game_screener(ticker, symbols):
+    try:
+        # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+        # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+        df = yf.Ticker(ticker).history(period= "ytd", interval= "1d")
+
+        hi_val = df['High'].rolling(window=9).max()
+        low_val = df['Low'].rolling(window=9).min()
+        hi_val2 = df['High'].rolling(window=26).max()
+        low_val2 = df['Low'].rolling(window=26).min()
+
+        df['TenkanSen'] = (hi_val + low_val) / 2
+        df['KijunSen'] = (hi_val2 + low_val2) / 2
+        df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+
+        Tk = df["TenkanSen"][-1]
+        Kj = df["KijunSen"][-1]
+        lag = df['High'].iloc[-27]
+        SpT = df["SpanT"][-1]
+        open1 = df["Open"].iloc[-1]
+        cls1 = df["Close"].iloc[-1]
+
+        if cls1 > open1 and cls1 > Tk and cls1 > lag and cls1 > SpT:
+            try:
+                # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+                df = yf.Ticker(ticker).history(period= "1mo", interval= "30m")
+                hi_val = df['High'].rolling(window=9).max()
+                low_val = df['Low'].rolling(window=9).min()
+                hi_val2 = df['High'].rolling(window=26).max()
+                low_val2 = df['Low'].rolling(window=26).min()
+
+                df['TenkanSen'] = (hi_val + low_val) / 2
+                df['KijunSen'] = (hi_val2 + low_val2) / 2
+                df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+
+                Tk = df["TenkanSen"][-1]
+                Kj = df["KijunSen"][-1]
+                lag = df['High'].iloc[-27]
+                SpT = df["SpanT"][-1]
+                open1 = df["Open"].iloc[-1]
+                cls1 = df["Close"].iloc[-1]
+
+                if (cls1 > open1 and cls1 > Tk and cls1 > lag and cls1 > SpT):
+                    symbols.append(ticker)
+                    print(symbols)
+                    # try:
+                    #     # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+                    #     # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+                    #     df = yf.Ticker(ticker).history(period= "5d", interval= "5m")
+
+                    #     hi_val = df['High'].rolling(window=9).max()
+                    #     low_val = df['Low'].rolling(window=9).min()
+                    #     hi_val2 = df['High'].rolling(window=26).max()
+                    #     low_val2 = df['Low'].rolling(window=26).min()
+
+                    #     df['TenkanSen'] = (hi_val + low_val) / 2
+                    #     df['KijunSen'] = (hi_val2 + low_val2) / 2
+                    #     df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+
+                    #     Tk = df["TenkanSen"][-1]
+                    #     Kj = df["KijunSen"][-1]
+                    #     lag = df['High'].iloc[-27]
+                    #     SpT = df["SpanT"][-1]
+                    #     open1 = df["Open"].iloc[-1]
+                    #     cls1 = df["Close"].iloc[-1]
+
+                    #     if cls1 > open1 and (Tk - Kj)/Tk == 0:
+                    #         symbols.append(ticker)
+                    #         print(symbols)
+
+
+                    # except Exception as ex:
+                    #     pass
+            except Exception as ex:
+                pass
+    except Exception as ex:
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+    
+# Control long game
+def run_long_program():
+    symbols = []
+    print("Please wait while eligible stocks are printed below!")
+    for x in range(0, tickers25):
+        long_game_screener(tickers[x], symbols)
+    print("\n\n\n")
+    print(*symbols)
+    print("25% / 100% printed, checking the rest")
+
+    for x in range(tickers25, tickers25*2):
+        long_game_screener(tickers[x], symbols)
+    # print(symbols)
+    print("50% / 100% evaluated")
+
+    for x in range(tickers25*2, tickers25*3):
+        long_game_screener(tickers[x], symbols)
+    # print(symbols)
+    print("75% / 100% evaluated")
+
+    for x in range(tickers25*3, tickers25*4):
+        long_game_screener(tickers[x], symbols)
+    mixer.music.play()
+    print("100% Evaluated. number of stocks found: " + str(len(tickers)))
+    user_input = input('Enter "print" if you want to print list of eligible stocks or "short" screen daily candidates.').lower()
+    if user_input == "print":
+        print("\n\n\n")
+        print(symbols)
+        print("\n\n\n")
+    elif user_input == "short":
+        run_short_program()
+    else:
+        print("Invalid input!")
+        return
+
+# Control short game
+def run_short_program():
+    symbols = []
+    print("Please wait while eligible stocks are printed below!")
+    for x in range(0, tickers25):
+        short_game_screener(tickers[x], symbols)
+    print("\n\n\n")
+    print(*symbols)
+    print("25% / 100% printed, checking the rest")
+
+    for x in range(tickers25, tickers25*2):
+        short_game_screener(tickers[x], symbols)
+    # print(symbols)
+    print("50% / 100% evaluated")
+
+    for x in range(tickers25*2, tickers25*3):
+        short_game_screener(tickers[x], symbols)
+    # print(symbols)
+    print("75% / 100% evaluated")
+
+    for x in range(tickers25*3, tickers25*4):
+        short_game_screener(tickers[x], symbols)
+    mixer.music.play()
+    print("100% Evaluated. number of stocks found: " + str(len(tickers)))
+
+
+
+
+
+
+# Add loading bar for each iteration the screener runs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Run Functions ###
+# Get Symbol list
+tickers = get_symb(PATH, "Symbol")
+tickers25 = round(len(tickers)/4)
+
+# Screen and print symbols
+
+user_input = input('Stock Screener Application \nEnter "long" to screen longterm candidates, "short" for daily candidates, or "exit" to close the program: ').lower()
+if user_input == "long":
+    run_long_program()
+elif user_input == "short":
+    run_short_program()
+else:
+    print("Invalid input!")
+
+while True:
+    user_input = input('Enter "print" if you want to print list of eligible stocks or "chart" to open Chart Program.').lower()
+    if user_input == "print":
+        print("\n\n\n" )
+        print(symbols)
+        print("\n\n\n")
+    elif user_input == "chart":
+        open_chart()
+    elif user_input == "long":
+        run_long_program()
+    elif user_input == "short":
+        run_short_program()
+    else:
+        print("Invalid input!")
+
+# Open chart
+# open_chart(symbols)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Version 1.2 (Works but I still need to fine tune settings) ###
+
+
+
+# # Long game screener function
+# def long_game_screener(ticker):
+#     try:
+#         # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#         # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#         df = yf.Ticker(ticker).history(period= "max", interval= "1mo")
+
+#         hi_val = df['High'].rolling(window=9).max()
+#         low_val = df['Low'].rolling(window=9).min()
+#         hi_val2 = df['High'].rolling(window=26).max()
+#         low_val2 = df['Low'].rolling(window=26).min()
+#         hi_val3 = df['High'].rolling(window=52).max()
+#         low_val3 = df['Low'].rolling(window=52).min()
+        
+#         df['TenkanSen'] = (hi_val + low_val) / 2
+#         df['KijunSen'] = (hi_val2 + low_val2) / 2
+#         df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#         df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#         Tk = df["TenkanSen"].iloc[-1]
+#         Kj = df['KijunSen'].iloc[-1]
+#         SpT = df["SpanT"].iloc[-1]
+#         SpB = df["SpanB"].iloc[-1]
+#         Cdl = df["Close"].iloc[-1]
+
+#         if Tk > SpB and Tk > SpT and (Tk - Kj)/Tk > 0 and (Tk - Kj)/Tk < 0.5:
+#             try: 
+#                 # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#                 # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#                 df = yf.Ticker(ticker).history(period= "5y", interval= "1wk")
+
+#                 hi_val = df['High'].rolling(window=9).max()
+#                 low_val = df['Low'].rolling(window=9).min()
+#                 hi_val2 = df['High'].rolling(window=26).max()
+#                 low_val2 = df['Low'].rolling(window=26).min()
+#                 hi_val3 = df['High'].rolling(window=52).max()
+#                 low_val3 = df['Low'].rolling(window=52).min()
+                
+#                 df['TenkanSen'] = (hi_val + low_val) / 2
+#                 df['KijunSen'] = (hi_val2 + low_val2) / 2
+#                 df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#                 df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#                 Tk = df["TenkanSen"].iloc[-1]
+#                 Kj = df['KijunSen'].iloc[-1]
+#                 SpT = df["SpanT"].iloc[-1]
+#                 SpB = df["SpanB"].iloc[-1]
+#                 Cdl = df["Close"].iloc[-1]
+
+#                 if Tk > SpB and Tk > SpT and Tk > Kj and Kj > SpB and Kj > SpT and Cdl > SpT and Cdl > SpB:
+#                     try:
+#                         # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#                         # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#                         df = yf.Ticker(ticker).history(period= "1y", interval= "1d")
+
+#                         hi_val = df['High'].rolling(window=9).max()
+#                         low_val = df['Low'].rolling(window=9).min()
+#                         hi_val2 = df['High'].rolling(window=26).max()
+#                         low_val2 = df['Low'].rolling(window=26).min()
+#                         hi_val3 = df['High'].rolling(window=52).max()
+#                         low_val3 = df['Low'].rolling(window=52).min()
+                        
+#                         df['TenkanSen'] = (hi_val + low_val) / 2
+#                         df['KijunSen'] = (hi_val2 + low_val2) / 2
+#                         df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#                         df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#                         Tk = df["TenkanSen"].iloc[-1]
+#                         Kj = df['KijunSen'].iloc[-1]
+#                         SpT = df["SpanT"].iloc[-1]
+#                         SpB = df["SpanB"].iloc[-1]
+#                         Cdl = df["Close"].iloc[-1]
+
+#                         if Cdl > SpT and Cdl > SpB:
+#                             try:
+#                                 # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#                                 # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#                                 df = yf.Ticker(ticker).history(period= "3mo", interval= "1h")
+
+#                                 hi_val = df['High'].rolling(window=9).max()
+#                                 low_val = df['Low'].rolling(window=9).min()
+#                                 hi_val2 = df['High'].rolling(window=26).max()
+#                                 low_val2 = df['Low'].rolling(window=26).min()
+#                                 hi_val3 = df['High'].rolling(window=52).max()
+#                                 low_val3 = df['Low'].rolling(window=52).min()
+                                
+#                                 df['TenkanSen'] = (hi_val + low_val) / 2
+#                                 df['KijunSen'] = (hi_val2 + low_val2) / 2
+#                                 df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#                                 df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#                                 Tk = df["TenkanSen"].iloc[-1]
+#                                 Kj = df['KijunSen'].iloc[-1]
+#                                 SpT = df["SpanT"].iloc[-1]
+#                                 SpB = df["SpanB"].iloc[-1]
+#                                 Cdl = df["Close"].iloc[-1]
+
+#                                 if Cdl > Kj:
+#                                     symbols.append(ticker)
+
+#                             except Exception as ex:
+#                                 pass
+#                     except Exception as ex:
+#                         pass
+#             except Exception as ex:
+#                 pass
+#     except Exception as ex:
+#         pass
+
+# # Control long game
+# def run_month_program():
+#     print("Month Stock Screener Application: Please wait while eligible stocks are printed below!")
+#     for x in range(0, tickers25):
+#         long_game_screener(tickers[x])
+#     print(symbols)
+#     print("25% / 100% evaluated")
+
+#     for x in range(tickers25, tickers25*2):
+#         long_game_screener(tickers[x])
+#     print(symbols)
+#     print("50% / 100% evaluated")
+
+#     for x in range(tickers25*2, tickers25*3):
+#         long_game_screener(tickers[x])
+#     print(symbols)
+#     print("75% / 100% evaluated")
+
+#     for x in range(tickers25*3, tickers25*4):
+#         long_game_screener(tickers[x])
+#     print(*symbols)
+#     print("100% Evaluated. Program Closing")
+#     mixer.music.play()
+
+# # Day trade screener function
+# # Screener function
+# def day_trade_screener(ticker):
+#     try:
+#         # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#         # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#         df = yf.Ticker(ticker).history(period= "max", interval= "1mo")
+
+#         hi_val = df['High'].rolling(window=9).max()
+#         low_val = df['Low'].rolling(window=9).min()
+#         hi_val2 = df['High'].rolling(window=26).max()
+#         low_val2 = df['Low'].rolling(window=26).min()
+#         hi_val3 = df['High'].rolling(window=52).max()
+#         low_val3 = df['Low'].rolling(window=52).min()
+        
+#         df['TenkanSen'] = (hi_val + low_val) / 2
+#         df['KijunSen'] = (hi_val2 + low_val2) / 2
+#         df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#         df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#         Tk = df["TenkanSen"].iloc[-1]
+#         Kj = df['KijunSen'].iloc[-1]
+#         SpT = df["SpanT"].iloc[-1]
+#         SpB = df["SpanB"].iloc[-1]
+#         Cdl = df["Close"].iloc[-1]
+
+#         if Tk > SpB and Tk > SpT and Kj > SpB and Kj > SpT and Cdl > Kj and (Tk - Kj)/Tk < 0.2 and (Tk - Kj)/Tk > 0.05:
+#             try: 
+#                 # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#                 # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#                 df = yf.Ticker(ticker).history(period= "5y", interval= "1wk")
+
+#                 hi_val = df['High'].rolling(window=9).max()
+#                 low_val = df['Low'].rolling(window=9).min()
+#                 hi_val2 = df['High'].rolling(window=26).max()
+#                 low_val2 = df['Low'].rolling(window=26).min()
+#                 hi_val3 = df['High'].rolling(window=52).max()
+#                 low_val3 = df['Low'].rolling(window=52).min()
+                
+#                 df['TenkanSen'] = (hi_val + low_val) / 2
+#                 df['KijunSen'] = (hi_val2 + low_val2) / 2
+#                 # df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#                 df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#                 Tk = df["TenkanSen"].iloc[-1]
+#                 Kj = df['KijunSen'].iloc[-1]
+#                 # SpT = df["SpanT"].iloc[-1]
+#                 SpB = df["SpanB"].iloc[-1]
+#                 Cdl = df["Close"].iloc[-1]
+
+#                 if Tk > SpB and Kj > SpB and Cdl > Kj and (Tk - Kj)/Tk < 0.1:
+#                     try:
+#                         # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#                         # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#                         df = yf.Ticker(ticker).history(period= "ytd", interval= "1d")
+
+#                         hi_val = df['High'].rolling(window=9).max()
+#                         low_val = df['Low'].rolling(window=9).min()
+#                         hi_val2 = df['High'].rolling(window=26).max()
+#                         low_val2 = df['Low'].rolling(window=26).min()
+#                         hi_val3 = df['High'].rolling(window=52).max()
+#                         low_val3 = df['Low'].rolling(window=52).min()
+                        
+#                         df['TenkanSen'] = (hi_val + low_val) / 2
+#                         df['KijunSen'] = (hi_val2 + low_val2) / 2
+#                         df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#                         df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#                         Tk = df["TenkanSen"].iloc[-1]
+#                         Kj = df['KijunSen'].iloc[-1]
+#                         SpT = df["SpanT"].iloc[-1]
+#                         SpB = df["SpanB"].iloc[-1]
+#                         Cdl = df["Close"].iloc[-1]
+
+#                         if Tk > Kj and Tk > SpB and Kj > SpB and Cdl > SpB and Cdl > SpT:
+#                             try:
+#                                 # Periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max
+#                                 # Intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
+#                                 df = yf.Ticker(ticker).history(period= "3mo", interval= "1h")
+
+#                                 hi_val = df['High'].rolling(window=9).max()
+#                                 low_val = df['Low'].rolling(window=9).min()
+#                                 hi_val2 = df['High'].rolling(window=26).max()
+#                                 low_val2 = df['Low'].rolling(window=26).min()
+#                                 hi_val3 = df['High'].rolling(window=52).max()
+#                                 low_val3 = df['Low'].rolling(window=52).min()
+                                
+#                                 df['TenkanSen'] = (hi_val + low_val) / 2
+#                                 df['KijunSen'] = (hi_val2 + low_val2) / 2
+#                                 df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#                                 df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#                                 Tk = df["TenkanSen"].iloc[-1]
+#                                 Kj = df['KijunSen'].iloc[-1]
+#                                 SpT = df["SpanT"].iloc[-1]
+#                                 SpB = df["SpanB"].iloc[-1]
+#                                 Cdl = df["Close"].iloc[-1]
+
+#                                     # Try open candle close candle
+#                                 if Cdl > SpB and Cdl > SpT and Tk > Kj and (Tk - Kj)/Tk < 0.5:
+#                                     symbols.append(ticker)
+
+#                             except Exception as ex:
+#                                 pass
+#                     except Exception as ex:
+#                         pass
+#             except Exception as ex:
+#                 pass
+#     except Exception as ex:
+#         pass
+
+# # Control day trader
+# def run_day_program():
+#     print("Day Stock Screener Application: Please wait while eligible stocks are printed below!")
+#     for x in range(0, tickers25):
+#         day_trade_screener(tickers[x])
+#     print(symbols)
+#     print("25% / 100% evaluated")
+
+#     for x in range(tickers25, tickers25*2):
+#         day_trade_screener(tickers[x])
+#     print(symbols)
+#     print("50% / 100% evaluated")
+
+#     for x in range(tickers25*2, tickers25*3):
+#         day_trade_screener(tickers[x])
+#     print(symbols)
+#     print("75% / 100% evaluated")
+
+#     for x in range(tickers25*3, tickers25*4):
+#         day_trade_screener(tickers[x])
+#     print(*symbols)
+#     print("100% Evaluated. Program Closing")
+#     mixer.music.play()
+
+
+
+
+
+
+
+
+
+
+
+### Version 1.0 ###
+
+
+# # Save weekly stock data to csv
+# def locate_weekly_stocks(ticker):
+        
+#     try:
+#         df = yf.Ticker(ticker).history(period= "1wk", interval= "15m")
+
+#         hi_val = df['High'].rolling(window=9).max()
+#         low_val = df['Low'].rolling(window=9).min()
+#         hi_val2 = df['High'].rolling(window=26).max()
+#         low_val2 = df['Low'].rolling(window=26).min()
+#         hi_val3 = df['High'].rolling(window=52).max()
+#         low_val3 = df['Low'].rolling(window=52).min()
+        
+#         df['TenkanSen'] = (hi_val + low_val) / 2
+#         df['KijunSen'] = (hi_val2 + low_val2) / 2
+#         df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#         df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#         Tk = df["TenkanSen"].iloc[-1]
+#         Kj = df['KijunSen'].iloc[-1]
+#         SpA = df["SpanT"].iloc[-1]
+#         SpB = df["SpanB"].iloc[-1]
+#         Cdl = df["Close"].iloc[-1]
+
+#         ## Hourly, fast line above slow line, fast and slow line above Span A
+#         # if ((Tk - Kj)/Tk * 100) < 0.01 and ((Tk - Kj)/Tk * 100) > 0 and Tk > SpA and Kj > SpA:
+
+#         ## Hourly, fast and slow lines close, fast and slow line above Span A
+#         if ((Tk - Kj)/Tk * 100) == 0 and Tk > SpA and Kj > SpA and Tk > SpB and Kj > SpB and Cdl > SpA and Cdl > SpB:
+#             # print("Match found: " + ticker)
+#             symbols.append(ticker)
+#             # wb.open_new(str("https://www.tradingview.com/chart/PJnpwyIC/?symbol=NASDAQ%A" + ticker))
+#             # time.sleep(0.3)
+#             # kb.press_and_release("ctrl+1")
+#         # else:
+#         #     print("Checking")
+#         print(symbols)
+#     except Exception as ex:
+#         pass
+
+# # Save monthly stock data to csv
+# def locate_monthly_stocks(ticker):
+        
+#     try:
+#         df = yf.Ticker(ticker).history(period= "1mo", interval= "1h")
+
+#         hi_val = df['High'].rolling(window=9).max()
+#         low_val = df['Low'].rolling(window=9).min()
+#         hi_val2 = df['High'].rolling(window=26).max()
+#         low_val2 = df['Low'].rolling(window=26).min()
+#         hi_val3 = df['High'].rolling(window=52).max()
+#         low_val3 = df['Low'].rolling(window=52).min()
+        
+#         df['TenkanSen'] = (hi_val + low_val) / 2
+#         df['KijunSen'] = (hi_val2 + low_val2) / 2
+#         df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#         df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#         Tk = df["TenkanSen"].iloc[-1]
+#         Kj = df['KijunSen'].iloc[-1]
+#         SpA = df["SpanT"].iloc[-1]
+#         SpB = df["SpanB"].iloc[-1]
+#         Cdl = df["Close"].iloc[-1]
+
+#         ## Hourly, fast line above slow line, fast and slow line above Span A
+#         # if ((Tk - Kj)/Tk * 100) < 0.01 and ((Tk - Kj)/Tk * 100) > 0 and Tk > SpA and Kj > SpA:
+
+#         ## Hourly, fast and slow lines close, fast and slow line above Span A
+#         if ((Tk - Kj)/Tk * 100) > 0 and Tk > SpA and Kj > SpA and Tk > SpB and Kj > SpB and Cdl > SpA and Cdl > SpB:
+#             # print("Match found: " + ticker)
+#             symbols.append(ticker)
+#             # wb.open_new(str("https://www.tradingview.com/chart/PJnpwyIC/?symbol=NASDAQ%A" + ticker))
+#             # time.sleep(0.3)
+#             # kb.press_and_release("ctrl+1")
+#         # else:
+#         #     print("Checking")
+#         print(symbols)
+#     except Exception as ex:
+#         pass
+
+# # Save monthly stock data to csv
+# def locate_yearly_stocks(ticker):
+        
+#     try:
+#         df = yf.Ticker(ticker).history(period= "1yr", interval= "1d")
+
+#         hi_val = df['High'].rolling(window=9).max()
+#         low_val = df['Low'].rolling(window=9).min()
+#         hi_val2 = df['High'].rolling(window=26).max()
+#         low_val2 = df['Low'].rolling(window=26).min()
+#         hi_val3 = df['High'].rolling(window=52).max()
+#         low_val3 = df['Low'].rolling(window=52).min()
+        
+#         df['TenkanSen'] = (hi_val + low_val) / 2
+#         df['KijunSen'] = (hi_val2 + low_val2) / 2
+#         df['SpanT'] = ((df['TenkanSen'] + df['KijunSen']) / 2).shift(26)
+#         df['SpanB'] = ((hi_val3 + low_val3) / 2).shift(26)
+
+#         Tk = df["TenkanSen"].iloc[-1]
+#         Kj = df['KijunSen'].iloc[-1]
+#         SpA = df["SpanT"].iloc[-1]
+#         SpB = df["SpanB"].iloc[-1]
+#         Cdl = df["Close"].iloc[-1]
+
+#         ## Hourly, fast line above slow line, fast and slow line above Span A
+#         # if ((Tk - Kj)/Tk * 100) < 0.01 and ((Tk - Kj)/Tk * 100) > 0 and Tk > SpA and Kj > SpA:
+
+#         ## Hourly, fast and slow lines close, fast and slow line above Span A
+#         if Tk > SpA and Kj > SpA and Tk > SpB and Kj > SpB and Cdl > SpA and Cdl > SpB:
+#             # print("Match found: " + ticker)
+#             symbols.append(ticker)
+#             # wb.open_new(str("https://www.tradingview.com/chart/PJnpwyIC/?symbol=NASDAQ%A" + ticker))
+#             # time.sleep(0.3)
+#             # kb.press_and_release("ctrl+1")
+#         # else:
+#         #     print("Checking")
+#         print(symbols)
+#     except Exception as ex:
+#         pass
+
+
+# # Control program function
+# def program_control():
+#     while True:
+#         user_input = input('Stock Screener Application: Enter "wk" for weekly stocks, "mo" for monthly, "max" for maximum range, or "exit" : ').lower()
+        
+#         if user_input == "wk":
+#             print("Checking weekly stocks! \nPlease wait for stock list to print.")
+#             for x in range(0, len(tickers)):
+#                 locate_weekly_stocks(tickers[x])
+#             mixer.music.play()
+#             print("Finished!")
+#         elif user_input == "mo":
+#             print("Checking monthly stocks! \nPlease wait for stock list to print.")
+#             for x in range(0, len(tickers)):
+#                 locate_monthly_stocks(tickers[x])
+#             mixer.music.play()
+#             print("Finished!")
+#         elif user_input == "max":
+#             print("Checking max stocks! \nPlease wait for stock list to print.")
+#             for x in range(0, len(tickers)):
+#                 locate_yearly_stocks(tickers[x])
+#             mixer.music.play()
+#             print("Finished!")
+#         elif user_input == "exit":
+#             print("Program closed!")
+#             break       
+#         else:
+#             print("Invalid input!")
+
+# tickers10 = round(len(tickers)/10)
+
+### Program ###
+# Main
+# program_control()
